@@ -4,8 +4,11 @@ const attributes = [
         code: "barcode",
         type: "text",
         required: true,
-        validation: { regex: /^\d{13}$/, errorMessage: "Must be 13 digits" },
+        validation: { regex: /^[\d\s;]+$/, // Allows digits, semicolons, and spaces
+            errorMessage: "Только цифры и ;" 
+        },
         defaultValue: "",
+        width: "280px",
     },
     {
         name: "Название товара",
@@ -14,6 +17,7 @@ const attributes = [
         required: false,
         validation: { maxLength: 100 },
         defaultValue: "",
+        width: "600px",
     },
     {
         name: "Кол-во",
@@ -22,6 +26,7 @@ const attributes = [
         required: true,
         validation: { min: 1, max: 999 },
         defaultValue: "",
+        width: "60px",
     },
     {
         name: "Юнит",
@@ -36,6 +41,7 @@ const attributes = [
             { name: "шт.", code: "unit", aliases: ["штуки", "pcs"] },
         ],
         defaultValue: "",
+        width: "60px",
     },
     {
         name: "Страна",
@@ -296,6 +302,7 @@ const attributes = [
 { name: "Абхазия", code: "ABH", aliases: [] },
         ],
         defaultValue: "",
+        width: "280px",
     },
     
     
@@ -310,6 +317,7 @@ const attributes = [
 { name: "Дед Пихто", code: "dedpikhto" },
         ],
         defaultValue: "",
+        width: "160px",
         },
     
     
@@ -327,5 +335,6 @@ const attributes = [
             false: false,
         },
         defaultValue: false,
+        width: "36px",
     },
 ];

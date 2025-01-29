@@ -2,65 +2,85 @@ document.addEventListener("DOMContentLoaded", () => {
     const tbody = document.querySelector("tbody");
     const thead = document.querySelector("thead");
     const addRowBtn = document.getElementById("add-row-btn");
-    const exportCsvBtn = document.getElementById("export-csv-btn");
+document.getElementById("export-csv-btn").addEventListener("click", () => {
+    exportToCsv("codes"); // Default mode for codes
+});
+
+document.getElementById("export-names-btn").addEventListener("click", () => {
+    exportToCsv("names"); // New mode for names
+});
 
     let isDragging = false;
     let dragStartValue = null;
     let dragStartCell = null;
 
     // Generate table headers dynamically
-    function createTableHeaders() {
-        const row = document.createElement("tr");
-        attributes.forEach((attr) => {
-            const th = document.createElement("th");
-            th.textContent = attr.name;
-            row.appendChild(th);
-        });
-        const actionsTh = document.createElement("th");
-        row.appendChild(actionsTh);
-        thead.appendChild(row);
-    }
+function createTableHeaders() {
+    const row = document.createElement("tr");
+    attributes.forEach((attr) => {
+        const th = document.createElement("th");
+        th.textContent = attr.name;
+
+        // Set column width from attributes.js
+        if (attr.width) {
+            th.style.width = attr.width;
+        }
+
+        row.appendChild(th);
+    });
+    const actionsTh = document.createElement("th");
+    actionsTh.textContent = "Actions"; // Optional
+    actionsTh.style.width = "50px"; // Set a fixed width for actions column
+    row.appendChild(actionsTh);
+
+    thead.appendChild(row);
+}
 
     // Create a single table row dynamically
-    function createRow(data = {}) {
-        const row = document.createElement("tr");
+function createRow(data = {}) {
+    const row = document.createElement("tr");
 
-        attributes.forEach((attr) => {
-            const cell = document.createElement("td");
-            const container = document.createElement("div");
-            container.className = "cell-container";
-            container.style.position = "relative";
+    attributes.forEach((attr) => {
+        const cell = document.createElement("td");
+        const container = document.createElement("div");
+        container.className = "cell-container";
+        container.style.position = "relative";
 
-            const input = generateInputField(attr, data[attr.name] || attr.defaultValue || "");
+        // Set column width from attributes.js
+        if (attr.width) {
+            cell.style.width = attr.width;
+        }
 
-            input.addEventListener("input", () => validateField(input, attr));
-            container.appendChild(input);
+        const input = generateInputField(attr, data[attr.name] || attr.defaultValue || "");
 
-            // Add drag handle
-            const dragHandle = document.createElement("div");
-            dragHandle.className = "drag-handle";
-            dragHandle.addEventListener("mousedown", (event) => {
-                isDragging = true;
-                dragStartValue = attr.type === "checkbox" ? input.checked : input.value;
-                dragStartCell = input;
-                event.preventDefault();
-            });
-            container.appendChild(dragHandle);
+        input.addEventListener("input", () => validateField(input, attr));
+        container.appendChild(input);
 
-            cell.appendChild(container);
-            row.appendChild(cell);
+        // Add drag handle
+        const dragHandle = document.createElement("div");
+        dragHandle.className = "drag-handle";
+        dragHandle.addEventListener("mousedown", (event) => {
+            isDragging = true;
+            dragStartValue = attr.type === "checkbox" ? input.checked : input.value;
+            dragStartCell = input;
+            event.preventDefault();
         });
+        container.appendChild(dragHandle);
 
-        const actionsCell = document.createElement("td");
-        const removeButton = document.createElement("button");
-        removeButton.textContent = "X";
-        removeButton.className = "remove-btn"; // Add the red style to remove button
-        removeButton.addEventListener("click", () => tbody.removeChild(row));
-        actionsCell.appendChild(removeButton);
-        row.appendChild(actionsCell);
+        cell.appendChild(container);
+        row.appendChild(cell);
+    });
 
-        tbody.appendChild(row);
-    }
+    const actionsCell = document.createElement("td");
+    const removeButton = document.createElement("button");
+    removeButton.textContent = "X";
+    removeButton.className = "remove-btn"; // Add the red style to remove button
+    removeButton.addEventListener("click", () => tbody.removeChild(row));
+    actionsCell.appendChild(removeButton);
+    row.appendChild(actionsCell);
+
+    tbody.appendChild(row);
+}
 
     // Generate input field based on attribute type
 function generateInputField(attr, value) {
@@ -146,8 +166,8 @@ function validateField(input, attr) {
     return isValid;
 }
 
-    // Export table data to CSV
-function exportToCsv() {
+// Function to export CSV with either codes or names
+function exportToCsv(mode = "codes") {
     const rows = Array.from(tbody.querySelectorAll("tr"));
     const errors = [];
     
@@ -176,8 +196,9 @@ function exportToCsv() {
     // Generate CSV if all validations pass
     const csvRows = [];
 
-    // Add headers using the `code` property
-    csvRows.push(attributes.map((attr) => attr.code));
+    // Add headers using either `code` or `name` depending on the mode
+    const headers = attributes.map((attr) => (mode === "codes" ? attr.code : attr.name));
+    csvRows.push(headers);
 
     // Process each row
     rows.forEach((row) => {
@@ -189,10 +210,10 @@ function exportToCsv() {
             const attr = attributes[index];
             let value = input.type === "checkbox" ? (input.checked ? "true" : "false") : input.value;
 
-            // Convert value to `code` for select fields
+            // Convert value to `code` or `name` for select fields
             if (attr.type === "select" && attr.values) {
                 const match = attr.values.find((v) => v.name === value);
-                value = match ? match.code : value; // Use `code` or fallback to the value
+                value = match ? (mode === "codes" ? match.code : match.name) : value; // Use either `code` or `name`
             }
 
             // Escape commas, double quotes, and newlines
@@ -211,7 +232,7 @@ function exportToCsv() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "table_data.csv");
+    link.setAttribute("download", `table_data_${mode}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -247,30 +268,47 @@ function displayErrorMessage(message) {
 }
 
 
-    // Handle drag-fill functionality
-    tbody.addEventListener("mousemove", (event) => {
-        if (!isDragging || !dragStartCell) return;
 
-        const target = event.target.closest(".cell-container input, .cell-container select");
-        if (!target || target === dragStartCell) return;
+// Handle drag-fill functionality with real-time validation and green field border
+tbody.addEventListener("mousemove", (event) => {
+    if (!isDragging || !dragStartCell) return;
 
-        const startIndex = dragStartCell.closest("td").cellIndex;
-        const targetIndex = target.closest("td").cellIndex;
+    const target = event.target.closest(".cell-container input, .cell-container select");
+    if (!target || target === dragStartCell) return;
 
-        if (startIndex === targetIndex) {
-            if (dragStartCell.type === "checkbox") {
-                target.checked = dragStartCell.checked;
-            } else {
-                target.value = dragStartCell.value;
-            }
+    const startIndex = dragStartCell.closest("td").cellIndex;
+    const targetIndex = target.closest("td").cellIndex;
+
+    if (startIndex === targetIndex) {
+        const attr = attributes[startIndex]; // Get attribute configuration
+
+        if (dragStartCell.type === "checkbox") {
+            target.checked = dragStartCell.checked;
+        } else {
+            target.value = dragStartCell.value;
         }
-    });
 
-    document.addEventListener("mouseup", () => {
-        isDragging = false;
-        dragStartValue = null;
-        dragStartCell = null;
+        // Apply green border directly to the input/select field
+        target.classList.add("drag-filling");
+
+        // Validate the field after filling
+        validateField(target, attr);
+    }
+});
+
+// Remove green highlight on mouse release
+document.addEventListener("mouseup", () => {
+    isDragging = false;
+    dragStartValue = null;
+    dragStartCell = null;
+
+    // Remove green border from all fields
+    document.querySelectorAll(".drag-filling").forEach((input) => {
+        input.classList.remove("drag-filling");
     });
+});
+
+
 
     // Handle pasting tab-separated values
 document.addEventListener("paste", (event) => {
