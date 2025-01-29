@@ -36,6 +36,7 @@ h1 {
 }
 
 table {
+    table-layout: fixed; /* Fixes the column widths */
     border-collapse: collapse;
     border-radius: 20px;
     width: 100%;
@@ -43,6 +44,9 @@ table {
 }
 
 th, td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     border: none;
     padding: 8px;
     text-align: center;
@@ -125,14 +129,14 @@ td input[type="checkbox"] + .drag-handle {
 
 /* Highlight invalid fields */
 .invalid {
-    border: 2px solid red;
+    border: 1.5px solid red;
 }
 
-
-/* Highlight invalid fields */
-.invalid {
-    border: 2px solid red;
+/* Green border when drag-filling values */
+input.drag-filling, select.drag-filling {
+    border: 1.5px solid green !important; /* Ensure it overrides default styling */
 }
+
 
 /* Error message styling */
 #error-container {
@@ -202,11 +206,13 @@ footer {
     </div>
     <div style="text-align: center; margin-top: 20px;">
         <button id="add-row-btn">Добавить строку</button>
-        <button id="export-csv-btn">Экспорт шаблона</button>
+        <button id="export-names-btn">Экспорт таблицы</button>
+        <button id="export-csv-btn">Конвертировать в шаблон</button>
     </div>
     <script src="script.js"></script>
 </body>
   <footer>
-    v 6.1.1
+    Made by @konstabag<p>
+    v 6.1
   </footer>
 </html>
