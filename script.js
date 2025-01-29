@@ -29,7 +29,7 @@ function createTableHeaders() {
         row.appendChild(th);
     });
     const actionsTh = document.createElement("th");
-    actionsTh.textContent = "Actions"; // Optional
+    actionsTh.textContent = ""; // Optional
     actionsTh.style.width = "50px"; // Set a fixed width for actions column
     row.appendChild(actionsTh);
 
