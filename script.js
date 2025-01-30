@@ -166,6 +166,53 @@ function validateField(input, attr) {
     return isValid;
 }
 
+
+function parseTSV(tsvString) {
+    const rows = [];
+    let currentRow = [];
+    let currentCell = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < tsvString.length; i++) {
+        const char = tsvString[i];
+        const nextChar = tsvString[i + 1];
+
+        if (char === '"' && nextChar === '"') {
+            // **Escaped quotes (`""`) should be treated as a single `"` inside a value**
+            currentCell += '"';
+            i++; // Skip next character
+        } else if (char === '"') {
+            // **Toggle inQuotes mode**
+            inQuotes = !inQuotes;
+        } else if (char === "\t" && !inQuotes) {
+            // **Tab = Column Separator (Outside Quotes)**
+            currentRow.push(currentCell);
+            currentCell = "";
+        } else if ((char === "\n" || char === "\r") && !inQuotes) {
+            // **Newline = Row Separator (Outside Quotes)**
+            currentRow.push(currentCell);
+            rows.push(currentRow);
+            currentRow = [];
+            currentCell = "";
+        } else {
+            // **Regular character, add to the cell**
+            currentCell += char;
+        }
+    }
+
+    // **Push last cell and row if not empty**
+    if (currentCell !== "" || currentRow.length > 0) {
+        currentRow.push(currentCell);
+    }
+    if (currentRow.length > 0) {
+        rows.push(currentRow);
+    }
+
+    // **Fix: Remove trailing empty rows**
+    return rows.filter(row => row.some(cell => cell.trim() !== ""));
+}
+
+
 // Function to export CSV with either codes or names
 function exportToCsv(mode = "codes") {
     const rows = Array.from(tbody.querySelectorAll("tr"));
@@ -315,21 +362,29 @@ document.addEventListener("paste", (event) => {
     const activeElement = document.activeElement;
     if (!activeElement.closest("td")) return;
 
+    event.preventDefault(); // Stop the browser from pasting everything into one cell
+
     const startRow = Array.from(tbody.rows).findIndex((row) =>
         Array.from(row.cells).some((cell) => cell.contains(activeElement))
     );
     const startCol = activeElement.closest("td").cellIndex;
 
     const pasteData = event.clipboardData.getData("text/plain");
-    const lines = pasteData.trim().split("\n").map((line) => line.split("\t"));
 
-    // Ensure enough rows exist for the pasted data
-    while (tbody.rows.length < startRow + lines.length) createRow();
+    // **Step 1: Parse the pasted TSV data correctly**
+    const rows = parseTSV(pasteData);
 
-    // Paste data into the table
-    lines.forEach((line, rowIndex) => {
+    // **Fix: Remove trailing empty rows**
+    const filteredRows = rows.filter(row => row.some(cell => cell.trim() !== ""));
+
+    // **Step 2: Ensure enough rows exist before pasting**
+    while (tbody.rows.length < startRow + filteredRows.length) createRow();
+
+    // **Step 3: Distribute values across table cells**
+    filteredRows.forEach((rowData, rowIndex) => {
         const targetRow = tbody.rows[startRow + rowIndex];
-        line.forEach((value, colIndex) => {
+
+        rowData.forEach((value, colIndex) => {
             const targetCell = targetRow.cells[startCol + colIndex];
             if (!targetCell) return;
 
@@ -338,30 +393,28 @@ document.addEventListener("paste", (event) => {
 
             let normalizedValue = value.trim();
 
+            // **Handle checkboxes**
             if (attr.type === "checkbox") {
-                // Normalize checkbox input
-                normalizedValue =
+                input.checked =
                     normalizedValue.toLowerCase() === "yes" ||
                     normalizedValue.toLowerCase() === "true";
-                input.checked = normalizedValue;
-            } else if (attr.type === "select") {
-                // Find the corresponding value in the `values` array
+            }
+            // **Handle select dropdowns**
+            else if (attr.type === "select") {
                 const match = attr.values.find((v) =>
                     [v.name, v.code, ...(v.aliases || [])].includes(normalizedValue)
                 );
-                input.value = match ? match.name : ""; // Use `name` for UI
-            } else {
-                // Text or number inputs
+                input.value = match ? match.name : "";
+            }
+            // **Handle text & numbers**
+            else {
                 input.value = normalizedValue;
             }
 
-            validateField(input, attr); // Validate the input
+            validateField(input, attr);
         });
     });
-
-    event.preventDefault();
 });
-
     // Initialize table
     createTableHeaders();
     createRow(); // Add an initial row
